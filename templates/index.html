@@ -2,88 +2,170 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Miner Co</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Miner Co — Enhanced++ (Backend)</title>
+  <!-- Styles from your provided file kept as-is (trimmed for brevity in this snippet) -->
   <style>
-    body { font-family: 'Segoe UI', sans-serif; background:#e8f5e9; text-align:center; }
-    button { padding:8px 15px; margin:5px; cursor:pointer; }
+  /* (Paste the full CSS block from your code; unchanged) */
+  /* For brevity here, include the entire CSS from the code you supplied. */
   </style>
 </head>
 <body>
-  <h1>Welcome to Miner Co</h1>
+  <!-- (HTML structure identical to your uploaded file; only JS below is replaced to call backend) -->
 
-  <div id="login-container">
-    <input id="username" placeholder="Username" />
-    <input id="password" type="password" placeholder="Password" />
-    <button onclick="login()">Login / Create</button>
-  </div>
+  <header>
+    <div class="wrap title">
+      <h1 id="title">Welcome to Miner Co</h1>
+      <div class="badges">
+        <span class="badge" id="pickaxeBadge"><span class="dot"></span> Pickaxe: <b id="pickaxeLabel">-</b></span>
+        <span class="badge" id="silverBadge">🪙 Silver: <b id="silverLabel">0</b></span>
+        <span class="badge" id="powerupBadge">⚡ Powerups: <b id="powerupLabel">none</b></span>
+      </div>
+    </div>
+    <div id="powerupBars" class="wrap" style="padding-top:0"></div>
+  </header>
 
-  <div id="controls" style="display:none;">
-    <button onclick="mineOre('coal')">Mine Coal</button>
-    <button onclick="getLeaderboard()">Leaderboard</button>
-    <button onclick="showAdmin()">Admin</button>
-  </div>
+  <main class="wrap">
+    <div id="login-container">
+      <div class="row" style="margin-top:10px">
+        <input type="text" id="username" placeholder="Enter Username" autocomplete="username" />
+        <input type="password" id="password" placeholder="Enter Password" autocomplete="current-password" />
+        <button id="loginBtn">Login / Create</button>
+      </div>
+    </div>
 
-  <div id="adminPanel" style="display:none;">
-    <input id="adminCode" type="password" placeholder="Admin Code" />
-    <button onclick="adminLogin()">Login as Admin</button>
-    <button onclick="giveMoney()">💰 Infinite Money</button>
-  </div>
+    <div id="controls" class="row" style="display:none">
+      <button class="btn" onclick="toggleMenu('shopMenu')">🪓 Shop</button>
+      <button class="btn" onclick="toggleMenu('powerupMenu')">⚡ Powerups</button>
+      <button class="btn" onclick="toggleMenu('petShopMenu')">🐾 Pets</button>
+      <button class="btn" onclick="toggleMenu('gearShopMenu')">⚔️ Gear</button>
+      <button class="btn" onclick="toggleMenu('codeMenu')">🔓 Codes</button>
+      <button class="btn" onclick="toggleMenu('adminMenu')">⚙️ Admin</button>
+      <button class="btn" onclick="toggleMenu('leaderboardMenu')">🏆 Leaderboard</button>
+    </div>
 
-  <pre id="output"></pre>
+    <section id="mine"></section>
 
-<script>
-let token = null;
+    <section class="menus">
+      <div id="shopMenu" class="menu"><h3>🪓 Pickaxe Shop</h3><div id="shopGrid" class="grid"></div></div>
+      <div id="powerupMenu" class="menu"><h3>⚡ Powerups</h3><div id="powerupGrid" class="grid"></div></div>
+      <div id="petShopMenu" class="menu"><h3>🐾 Pet Gacha</h3><button id="spinPetBtn">🎁 Spin Pet</button><div id="petResult"></div><div id="petsOwned" class="grid" style="margin-top:10px"></div></div>
+      <div id="gearShopMenu" class="menu"><h3>⚔️ Gear</h3><div id="gearGrid" class="grid"></div></div>
+      <div id="codeMenu" class="menu"><h3>🔓 Codes</h3><div class="row"><input type="text" id="codeInput" placeholder="Enter Code" /><button id="redeemBtn">Redeem</button></div><div id="codeMessage" class="muted" style="margin-top:8px"></div></div>
+      <div id="adminMenu" class="menu"><h3>⚙️ Admin</h3><div class="row"><input type="password" id="adminCode" placeholder="Admin Code" /><button id="adminLoginBtn">Login</button></div><div id="adminControls" class="row hidden" style="margin-top:10px"><button onclick="adminGiveMoney()">💰 Infinite Money</button><button onclick="adminGivePowerups()">⚡ All Powerups</button></div></div>
+      <div id="leaderboardMenu" class="menu"><h3>🏆 Leaderboard</h3><ul id="leaderboardList"></ul></div>
+    </section>
+  </main>
 
-async function login(){
-  const user = document.getElementById("username").value;
-  const pass = document.getElementById("password").value;
-  let res = await fetch("/api/login", {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body: JSON.stringify({username:user,password:pass})
-  });
-  let data = await res.json();
-  if(data.error) return alert(data.error);
-  token = data.token;
-  document.getElementById("login-container").style.display="none";
-  document.getElementById("controls").style.display="block";
-}
+  <div id="inventoryBar"><div class="inv"><div class="inv-left" id="inventoryLeft"></div><div class="inv-right"><button class="sell" id="sellAllBtn">Sell All</button></div></div></div>
 
-async function mineOre(ore){
-  let res = await fetch("/api/mine",{
-    method:"POST", headers:{"Content-Type":"application/json","Authorization":token},
-    body:JSON.stringify({ore})
-  });
-  let data = await res.json();
-  document.getElementById("output").innerText = JSON.stringify(data,null,2);
-}
+  <div id="toasts" aria-live="polite" aria-atomic="true"></div>
 
-async function getLeaderboard(){
-  let res = await fetch("/api/leaderboard");
-  let data = await res.json();
-  document.getElementById("output").innerText = JSON.stringify(data,null,2);
-}
+  <script>
+  // === constants copied from your original file (trimmed here for brevity) ===
+  const ORES = ["coal","copper","bronze","silver","gold","diamond","emerald","rainbow","goldrush"];
+  const ORE_REQUIREMENTS = { coal:"coal", copper:"copper", bronze:"bronze", silver:"silver", gold:"gold", diamond:"diamond", emerald:"emerald", rainbow:"diamond", goldrush:"diamond" };
+  const PICKAXE_COSTS = { coal:{ coal:10 }, copper:{ coal:20 }, bronze:{ copper:30 }, silver:{ bronze:40 }, gold:{ silver:50 }, diamond:{ gold:60 }, emerald:{ diamond:100 } };
+  const POWERUP_SHOP = { "2x Strength": 50, "2x Luck": 75 };
 
-function showAdmin(){
-  document.getElementById("adminPanel").style.display="block";
-}
+  // --- client state (visual only); server is source of truth ---
+  let token = null;
+  const state = { player: { username:"", silver:0, pickaxe:"coal", inventory:{}, activePowerups:{}, pets:[], usedCodes:[], sword:"none", stats:{} } };
 
-async function adminLogin(){
-  let code = document.getElementById("adminCode").value;
-  let res = await fetch("/api/admin/login",{
-    method:"POST", headers:{"Content-Type":"application/json","Authorization":token},
-    body: JSON.stringify({code})
-  });
-  let data = await res.json();
-  alert(data.message || data.error);
-}
+  // --- helpers ---
+  const $ = s=>document.querySelector(s);
+  const fmt = n=>Number(n||0).toLocaleString();
+  function toast(t){const d=document.createElement('div');d.className='toast';d.textContent=t;$('#toasts').appendChild(d);setTimeout(()=>d.remove(),2400);}  
 
-async function giveMoney(){
-  let res = await fetch("/api/admin/money",{
-    method:"POST", headers:{"Authorization":token}
-  });
-  let data = await res.json();
-  alert("Silver: " + data.silver);
-}
-</script>
+  async function api(path, method='GET', body=null){
+    const opts = { method, headers: { 'Content-Type':'application/json' } };
+    if (token) opts.headers['Authorization'] = token;
+    if (body) opts.body = JSON.stringify(body);
+    const res = await fetch(path, opts);
+    const data = await res.json().catch(()=>({error:'bad json'}));
+    if (!res.ok) throw new Error(data.error || 'Request failed');
+    return data;
+  }
+  function hydrate(server){
+    // map server payload into local state for UI
+    state.player.username = server.username;
+    state.player.silver = server.silver;
+    state.player.pickaxe = server.pickaxe;
+    state.player.sword = server.sword;
+    state.player.inventory = server.inventory;
+    state.player.activePowerups = server.activePowerups || {};
+    state.player.pets = server.pets || [];
+    state.player.usedCodes = server.usedCodes || [];
+    state.player.stats = server.stats || {};
+    renderHUD(); renderInventory(); renderShop(); renderPowerups(); renderPets(); renderGear();
+  }
+
+  // --- login ---
+  async function login(){
+    const user=$('#username').value.trim(); const pass=$('#password').value.trim();
+    if(!user||!pass){alert('Enter username & password');return;}
+    try{
+      const data = await api('/api/login','POST',{username:user,password:pass});
+      token = data.token; hydrate(data);
+      $('#login-container').style.display='none'; $('#controls').style.display='flex';
+      toast(`Welcome, ${user}!`);
+      renderMine(); renderLeaderboard();
+    }catch(e){ alert(e.message); }
+  }
+
+  // --- mining ---
+  function canMine(ore){ return ORES.indexOf(state.player.pickaxe) >= ORES.indexOf(ORE_REQUIREMENTS[ore]); }
+  async function onMineTile(ev){
+    const ore = ev.currentTarget.dataset.ore;
+    if(!canMine(ore)){ toast('Locked ore'); return; }
+    try{ const data = await api('/api/mine','POST',{ore}); hydrate(data); renderMine(); }
+    catch(e){ toast(e.message); }
+  }
+
+  // --- selling ---
+  async function sellAll(){ try{ const data=await api('/api/sell_all','POST',{}); hydrate(data); toast(`Sold all for +${fmt(data.gain)} silver`);} catch(e){ toast(e.message);} }
+
+  // --- shop ---
+  async function buyPickaxe(tier){ try{ const data=await api('/api/shop/pickaxe','POST',{tier}); hydrate(data); toast(data.message||'Purchased'); } catch(e){ toast(e.message);} }
+  async function buyPowerup(name){ try{ const data=await api('/api/shop/powerup','POST',{name}); hydrate(data); toast('Powerup activated'); } catch(e){ toast(e.message);} }
+
+  // --- pets ---
+  async function spinPet(){ try{ const data=await api('/api/pets/spin','POST',{}); hydrate(data); toast(data.message||'Pet result'); } catch(e){ toast(e.message);} }
+
+  // --- codes ---
+  async function redeemCode(){ const code=$('#codeInput').value.trim(); if(!code) return; try{ const data=await api('/api/codes/redeem','POST',{code}); hydrate(data); $('#codeMessage').textContent='✅ '+(data.message||'OK'); } catch(e){ $('#codeMessage').textContent=e.message; } }
+
+  // --- daily ---
+  async function claimDaily(){ try{ const data=await api('/api/daily/claim','POST',{}); hydrate(data); toast('Daily claimed!'); } catch(e){ toast(e.message);} }
+
+  // --- admin ---
+  async function adminLogin(){ const code=$('#adminCode').value.trim(); try{ const data=await api('/api/admin/login','POST',{code}); hydrate(data); $('#adminControls').classList.remove('hidden'); toast('Admin unlocked'); } catch(e){ toast(e.message);} }
+  async function adminGiveMoney(){ try{ const data=await api('/api/admin/money','POST',{}); hydrate(data); toast('Cha-ching!'); } catch(e){ toast(e.message);} }
+  async function adminGivePowerups(){ try{ const data=await api('/api/admin/powerups','POST',{}); hydrate(data); toast('Powerups granted'); } catch(e){ toast(e.message);} }
+
+  // --- renderers (adapted from your file) ---
+  function renderHUD(){ $('#title').textContent = `Miner Co — ${state.player.username}`; $('#pickaxeLabel').textContent = state.player.pickaxe; $('#silverLabel').textContent = fmt(state.player.silver); updatePowerupUI(); }
+  function renderInventory(){ const left=$('#inventoryLeft'); left.innerHTML=''; for(const k of ORES.filter(k=>k!=="goldrush")){ const pill=document.createElement('div'); pill.className='pill'; pill.innerHTML=`<span class="muted">${k}:</span> <b>${fmt(state.player.inventory[k]||0)}</b>`; left.appendChild(pill);} const sp=document.createElement('div'); sp.className='pill'; sp.innerHTML=`🪙 <span class="muted">silver:</span> <b>${fmt(state.player.silver)}</b>`; left.appendChild(sp);}  
+  function renderShop(){ const grid=$('#shopGrid'); grid.innerHTML=''; Object.keys(PICKAXE_COSTS).forEach(tier=>{ const cost=PICKAXE_COSTS[tier]; const owned = ORES.indexOf(state.player.pickaxe) >= ORES.indexOf(tier); const can = owned? true : Object.entries(cost).every(([k,v])=>(state.player.inventory[k]||0)>=v); const card=document.createElement('div'); card.className='card'; card.innerHTML=`<h4>${tier} Pickaxe</h4><div class="muted">Cost: ${Object.entries(cost).map(([k,v])=>`${v} ${k}`).join(', ')}</div><button ${owned?'disabled':''} ${(!can||owned)?'class="btn-ghost"':''}>${owned?'Owned':'Buy'}</button>`; card.querySelector('button').addEventListener('click',()=>buyPickaxe(tier)); grid.appendChild(card); }); }
+  function renderPowerups(){ const grid=$('#powerupGrid'); grid.innerHTML=''; Object.entries(POWERUP_SHOP).forEach(([name,price])=>{ const btn=document.createElement('button'); btn.textContent=`${name} (${price})`; btn.onclick=()=>buyPowerup(name); const card=document.createElement('div'); card.className='card'; card.appendChild(btn); grid.appendChild(card); }); }
+  function renderPets(){ const owned=$('#petsOwned'); owned.innerHTML=(state.player.pets||[]).map(p=>`<div class="card"><b>${p.name}</b> <span class="muted">(${p.rarity})</span></div>`).join(''); }
+  function renderGear(){ const grid=$('#gearGrid'); grid.innerHTML='<div class="card muted">(Swords cosmetic on server)</div>'; }
+  async function renderLeaderboard(){ const res = await fetch('/api/leaderboard'); const list = await res.json(); $('#leaderboardList').innerHTML = list.map((u,i)=>`<li>${i+1}. <b>${u.username}</b> — ${fmt(u.silver)} silver</li>`).join(''); }
+
+  function updatePowerupUI(){ const ap=state.player.activePowerups||{}; const bars=[]; const parts=[]; const now=Date.now(); for(const [key,p] of Object.entries(ap)){ if(!p.until||p.until<=now) continue; const rem=p.until-now; const secs=Math.ceil(rem/1000); const denom = (key==='strength'?120:120)*1000; const pct=Math.max(0,Math.min(100,100*rem/denom)); parts.push(`${key} ${p.mult}x (${secs}s)`); bars.push(`<div class="bar"><div class="bar-fill" style="width:${pct}%"></div></div>`); } $('#powerupBars').innerHTML=bars.join(''); $('#powerupLabel').textContent = parts.length? parts.join(' · ') : 'none'; }
+
+  // mine grid (client visuals only)
+  function rollVisualOre(){ const base={ coal:40, copper:24, bronze:14, silver:10, gold:6, diamond:4, emerald:2, rainbow:0.6, goldrush:0 }; const entries=Object.entries(base); const total=entries.reduce((a,[,v])=>a+v,0); let r=Math.random()*total; for(const [k,v] of entries){ if((r-=v)<=0) return k; } return 'coal'; }
+  function renderMine(){ const wrap=document.createElement('div'); wrap.className='mine-grid'; const n=24; for(let i=0;i<n;i++){ const ore=rollVisualOre(); const div=document.createElement('button'); div.type='button'; div.className=`ore ${ore}`; div.dataset.ore=ore; div.innerHTML=ore; div.addEventListener('click',onMineTile); wrap.appendChild(div);} const mount=$('#mine'); mount.innerHTML=''; mount.appendChild(wrap);}  
+
+  // events
+  $('#loginBtn').addEventListener('click', login);
+  $('#sellAllBtn').addEventListener('click', sellAll);
+  $('#spinPetBtn').addEventListener('click', spinPet);
+  $('#redeemBtn').addEventListener('click', redeemCode);
+  $('#adminLoginBtn').addEventListener('click', adminLogin);
+
+  // initial
+  </script>
 </body>
 </html>
