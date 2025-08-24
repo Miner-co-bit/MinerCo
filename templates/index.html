@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Miner Co</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; background:#e8f5e9; text-align:center; }
+    button { padding:8px 15px; margin:5px; cursor:pointer; }
+  </style>
+</head>
+<body>
+  <h1>Welcome to Miner Co</h1>
+
+  <div id="login-container">
+    <input id="username" placeholder="Username" />
+    <input id="password" type="password" placeholder="Password" />
+    <button onclick="login()">Login / Create</button>
+  </div>
+
+  <div id="controls" style="display:none;">
+    <button onclick="mineOre('coal')">Mine Coal</button>
+    <button onclick="getLeaderboard()">Leaderboard</button>
+    <button onclick="showAdmin()">Admin</button>
+  </div>
+
+  <div id="adminPanel" style="display:none;">
+    <input id="adminCode" type="password" placeholder="Admin Code" />
+    <button onclick="adminLogin()">Login as Admin</button>
+    <button onclick="giveMoney()">💰 Infinite Money</button>
+  </div>
+
+  <pre id="output"></pre>
+
+<script>
+let token = null;
+
+async function login(){
+  const user = document.getElementById("username").value;
+  const pass = document.getElementById("password").value;
+  let res = await fetch("/api/login", {
+    method:"POST", headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({username:user,password:pass})
+  });
+  let data = await res.json();
+  if(data.error) return alert(data.error);
+  token = data.token;
+  document.getElementById("login-container").style.display="none";
+  document.getElementById("controls").style.display="block";
+}
+
+async function mineOre(ore){
+  let res = await fetch("/api/mine",{
+    method:"POST", headers:{"Content-Type":"application/json","Authorization":token},
+    body:JSON.stringify({ore})
+  });
+  let data = await res.json();
+  document.getElementById("output").innerText = JSON.stringify(data,null,2);
+}
+
+async function getLeaderboard(){
+  let res = await fetch("/api/leaderboard");
+  let data = await res.json();
+  document.getElementById("output").innerText = JSON.stringify(data,null,2);
+}
+
+function showAdmin(){
+  document.getElementById("adminPanel").style.display="block";
+}
+
+async function adminLogin(){
+  let code = document.getElementById("adminCode").value;
+  let res = await fetch("/api/admin/login",{
+    method:"POST", headers:{"Content-Type":"application/json","Authorization":token},
+    body: JSON.stringify({code})
+  });
+  let data = await res.json();
+  alert(data.message || data.error);
+}
+
+async function giveMoney(){
+  let res = await fetch("/api/admin/money",{
+    method:"POST", headers:{"Authorization":token}
+  });
+  let data = await res.json();
+  alert("Silver: " + data.silver);
+}
+</script>
+</body>
+</html>
