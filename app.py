@@ -1,9 +1,9 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 import secrets
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="templates", static_folder="static")
 app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///minerco.db"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
@@ -25,7 +25,6 @@ class User(db.Model):
     is_admin = db.Column(db.Boolean, default=False)
     session_token = db.Column(db.String(128), nullable=True)
 
-# ---------------- Utils ---------------- #
 def auth_user():
     token = request.headers.get("Authorization")
     if not token:
@@ -33,6 +32,10 @@ def auth_user():
     return User.query.filter_by(session_token=token).first()
 
 # ---------------- Routes ---------------- #
+@app.route("/")
+def home():
+    return render_template("index.html")
+
 @app.route("/api/login", methods=["POST"])
 def login():
     data = request.json
@@ -80,7 +83,6 @@ def leaderboard():
     top = User.query.order_by(User.silver.desc()).limit(10).all()
     return jsonify([{"username": u.username, "silver": u.silver} for u in top])
 
-# -------- Admin Login (fixed code) -------- #
 @app.route("/api/admin/login", methods=["POST"])
 def admin_login():
     user = auth_user()
@@ -101,6 +103,7 @@ def admin_money():
     db.session.commit()
     return jsonify({"silver": user.silver})
 
+# ---------------- Run ---------------- #
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
